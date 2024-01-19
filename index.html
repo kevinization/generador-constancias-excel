@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subir Archivo Excel</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"></script>
+</head>
+<body>
+
+  <h1>Subir Archivo Excel y Mostrar Columnas</h1>
+
+  <form>
+    <label for="fileInput">Selecciona un archivo .xlsx:</label>
+    <input type="file" id="fileInput" accept=".xlsx" />
+    <button type="button" onclick="cargarArchivo()">Cargar Archivo</button>
+  </form>
+
+  <div id="resultado"></div>
+
+  <script>
+    var data; // Declara data como variable global
+
+    function cargarArchivo() {
+      var input = document.getElementById('fileInput');
+      var file = input.files[0];
+
+      if (file) {
+        var reader = new FileReader();
+
+        reader.onload = function (e) {
+          data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+
+          // Supongamos que el archivo tiene una sola hoja
+          var sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+          // Obtén los datos en formato JSON
+          data = XLSX.utils.sheet_to_json(sheet);
+
+          // Filtra y muestra solo ciertas columnas
+          mostrarColumnas(data, ['Nombre(s)', 'Correo electrónico']);
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+    }
+
+    function mostrarColumnas(data, columnasMostrar) {
+      var resultadoDiv = document.getElementById('resultado');
+      resultadoDiv.innerHTML = '';
+
+      // Construye la tabla con las columnas seleccionadas
+      var tabla = '<table border="1"><thead><tr>';
+      columnasMostrar.forEach(function (columna) {
+        tabla += '<th>' + columna + '</th>';
+      });
+      tabla += '<th>Acciones</th></tr></thead><tbody>';
+
+      data.forEach(function (fila, index) {
+        tabla += '<tr>';
+        columnasMostrar.forEach(function (columna) {
+          tabla += '<td>' + (fila[columna] || '') + '</td>';
+        });
+        tabla += '<td><button onclick="generarPDF(' + index + ')">Generar PDF</button></td>';
+        tabla += '</tr>';
+      });
+
+      tabla += '</tbody></table>';
+
+      // Agrega la tabla al div de resultados
+      resultadoDiv.innerHTML = tabla;
+    }
+
+    function generarPDF(index) {
+  var fila = data[index];
+
+  // Crea una instancia de jsPDF con orientación horizontal
+  var doc = new jsPDF({
+    orientation: 'landscape'
+  });
+
+  // Carga la imagen desde una fuente permitida (ejemplo: servidor web)
+  var imagenURL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_logo.svg/2048px-LEGO_logo.svg.png';  // Reemplaza con la URL de tu imagen
+  var imagen = new Image();
+
+  imagen.crossOrigin = 'Anonymous';  // Permite el uso de toDataURL desde fuentes externas
+  imagen.onload = function () {
+    // Ajusta las coordenadas para colocar la imagen en la esquina superior derecha del PDF
+    var anchoPagina = doc.internal.pageSize.width;
+    var altoPagina = doc.internal.pageSize.height;
+    var coordenadaX = anchoPagina - 50; // Ajusta según sea necesario
+    var coordenadaY = 10;
+
+    // Agrega la imagen en la esquina superior derecha del PDF
+    doc.addImage(imagen, 'JPEG', coordenadaX, coordenadaY, 40, 40);  // Ajusta las dimensiones según sea necesario
+
+    // Ajusta el formato para el encabezado "Constancia de participación"
+    doc.setFontSize(24); // Tamaño de la fuente
+    doc.setTextColor("#00FF00"); // Color verde en formato hexadecimal
+    doc.setFontStyle('bold'); // Estilo en negrita
+
+    // Calcula el ancho del texto para centrarlo
+    var textoAncho = doc.getStringUnitWidth('Constancia de participación') * 24 / doc.internal.scaleFactor;
+    var textoX = (anchoPagina - textoAncho) / 2;
+
+    doc.text(textoX, 40, 'Constancia de participación'); // Centrado
+    doc.setFontStyle('normal'); // Restaura el estilo por defecto
+    doc.setTextColor("#FF0000"); // Color rojo en formato hexadecimal
+
+    // Muestra "Nombre completo" con tamaño de letra más pequeño
+    doc.setFontSize(18); // Tamaño de la fuente más pequeño
+    doc.text(20, 60, 'Nombre completo: ' + (fila['Nombre(s)'] || '') + ' ' + (fila['Primer apellido'] || '') + ' ' + (fila['Segundo Apellido'] || ''));
+
+    // Muestra "Correo electrónico" con tamaño de letra más pequeño
+    doc.setFontSize(16); // Tamaño de la fuente más pequeño
+    doc.setTextColor("#FFA500"); // Color anaranjado en formato hexadecimal
+    doc.text(20, 70, 'Correo electrónico: ' + (fila['Correo electrónico'] || ''));
+
+    // Muestra "Teléfono" con tamaño de letra más pequeño
+    doc.setFontSize(14); // Tamaño de la fuente más pequeño
+    doc.setTextColor("#0000FF"); // Color azul en formato hexadecimal
+    doc.text(20, 80, 'Teléfono: ' + (fila['Teléfono'] || ''));
+
+    // Guarda o descarga el documento PDF
+    doc.save('documento_fila_' + (index + 1) + '.pdf');
+  };
+
+  imagen.src = imagenURL;
+}
+  </script>
+
+</body>
+</html>
